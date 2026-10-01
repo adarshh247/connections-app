@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connections of My Life</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'], },
+                    colors: { brand: { 50: '#f0f9ff', 100: '#e0f2fe', 500: '#0ea5e9', 600: '#0284c7', 900: '#0c4a6e', } }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .modal-open { overflow: hidden; }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+
+    <!-- Header/Navigation -->
+    <header class="bg-white shadow-sm sticky top-0 z-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="bg-brand-500 text-white p-2 rounded-lg shadow-md">
+                    <i class="fa-solid fa-network-wired text-xl"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Connections <span class="text-brand-500 font-light">of my life</span></h1>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                <div class="relative hidden sm:block">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fa-solid fa-search text-slate-400"></i>
+                    </div>
+                    <input type="text" id="searchInput" placeholder="Search connections & tags..." class="pl-10 pr-4 py-2 border border-slate-300 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 w-64 transition-all">
+                </div>
+                <button onclick="openModal()" class="bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-full font-medium shadow-md hover:shadow-lg transition-all flex items-center space-x-2">
+                    <i class="fa-solid fa-plus"></i><span>Add Person</span>
+                </button>
+            </div>
+        </div>
+        <div class="sm:hidden px-4 pb-4">
+             <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class="fa-solid fa-search text-slate-400"></i></div>
+                <input type="text" id="searchInputMobile" placeholder="Search connections & tags..." class="pl-10 pr-4 py-2 border border-slate-300 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 w-full">
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+        <!-- Loading State -->
+        <div id="loadingState" class="flex flex-col items-center justify-center py-20">
+            <i class="fa-solid fa-circle-notch fa-spin text-4xl text-brand-500 mb-4"></i>
+            <p class="text-slate-500 font-medium">Loading your connections...</p>
+        </div>
+
+        <!-- Error State -->
+        <div id="errorState" class="hidden flex flex-col items-center justify-center py-20 text-center fade-in">
+            <div class="w-24 h-24 bg-red-50 rounded-full flex items-center justify-center mb-6">
+                <i class="fa-solid fa-link-slash text-4xl text-red-500"></i>
+            </div>
+            <h2 class="text-2xl font-semibold text-slate-800 mb-2">Connection Error</h2>
+            <p class="text-slate-600 max-w-md text-sm mb-6">We couldn't reach your Google Sheet.</p>
+        </div>
+
+        <div id="connectionsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 hidden"></div>
+
+        <div id="emptyState" class="hidden flex flex-col items-center justify-center py-20 text-center">
+            <div class="w-32 h-32 bg-slate-100 rounded-full flex items-center justify-center mb-6">
+                <i class="fa-solid fa-users text-5xl text-slate-300"></i>
+            </div>
+            <h2 class="text-2xl font-semibold text-slate-700 mb-2">No connections yet</h2>
+            <p class="text-slate-500 max-w-md mb-6">Start building your relationship map by adding the important people in your life.</p>
+            <button onclick="openModal()" class="bg-brand-600 text-white px-6 py-3 rounded-full font-medium hover:bg-brand-500 transition-colors shadow-md">
+                Add Your First Connection
+            </button>
+        </div>
+    </main>
+
+    <!-- Add/Edit Person Modal -->
+    <div id="personModal" class="fixed inset-0 z-[70] hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="fixed inset-0 bg-slate-900 bg-opacity-50 transition-opacity backdrop-blur-sm" onclick="closeModal()"></div>
+        <div class="fixed inset-0 z-10 overflow-y-auto">
+            <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                <div class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-2xl fade-in">
+                    <div class="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                        <h3 class="text-lg font-semibold leading-6 text-slate-900" id="modal-title">Add New Connection</h3>
+                        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-500 focus:outline-none rounded-full p-1 hover:bg-slate-200 transition-colors">
+                            <i class="fa-solid fa-times text-xl"></i>
+                        </button>
+                    </div>
+                    <div class="px-6 py-6">
+                        <form id="personForm" class="space-y-6" onsubmit="savePerson(event)">
+                            <input type="hidden" id="personId">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700">Full Name *</label>
+                                        <input type="text" id="name" required class="mt-1 block w-full rounded-md border border-slate-300 py-2 px-3 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 sm:text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700">Contact Number</label>
+                                        <input type="tel" id="phone" placeholder="+91 9876543210" class="mt-1 block w-full rounded-md border border-slate-300 py-2 px-3 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 sm:text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700">Tags (Press Enter to add)</label>
+                                        <div class="mt-1 relative rounded-md shadow-sm">
+                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class="fa-solid fa-hashtag text-slate-400 text-xs"></i></div>
+                                            <input type="text" id="tagInput" placeholder="HighSchool, GamingBuddy..." class="block w-full pl-8 rounded-md border border-slate-300 py-2 px-3 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 sm:text-sm">
+                                        </div>
+                                        <div id="activeTagsContainer" class="mt-2 flex flex-wrap gap-1.5"></div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700">Image URL (Optional)</label>
+                                        <div class="mt-1 flex rounded-md shadow-sm">
+                                            <input type="url" id="image" placeholder="https://example.com/photo.jpg" class="block w-full rounded-md border border-slate-300 py-2 px-3 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 sm:text-sm">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700">Birth Date</label>
+                                        <input type="date" id="birthdate" class="mt-1 block w-full rounded-md border border-slate-300 py-2 px-3 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 sm:text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700">Current Location</label>
+                                        <input type="text" id="location" placeholder="City, Country" class="mt-1 block w-full rounded-md border border-slate-300 py-2 px-3 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 sm:text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700">Work / Occupation</label>
+                                        <input type="text" id="work" placeholder="Software Engineer at TechCorp" class="mt-1 block w-full rounded-md border border-slate-300 py-2 px-3 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 sm:text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700">Education</label>
+                                        <input type="text" id="education" placeholder="B.Tech from University" class="mt-1 block w-full rounded-md border border-slate-300 py-2 px-3 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 sm:text-sm">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 gap-6 mt-6">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Family & Relatives</label>
+                                    <div id="relativesContainer" class="space-y-3">
+                                        <!-- Dynamic relative rows injected here -->
+                                    </div>
+                                    <button type="button" onclick="addRelativeRow()" class="mt-3 text-sm text-brand-600 hover:text-brand-700 font-medium flex items-center transition-colors">
+                                        <i class="fa-solid fa-plus mr-1"></i> Add Relative
+                                    </button>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700">Description & Notes</label>
+                                    <textarea id="notes" rows="3" placeholder="How we met, favorite memories..." class="mt-1 block w-full rounded-md border border-slate-300 py-2 px-3 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 sm:text-sm"></textarea>
+                                </div>
+                            </div>
+                            
+                            <!-- Action Buttons inside the form for proper submission -->
+                            <div class="bg-slate-50 -mx-6 -mb-6 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 border-t border-slate-100 mt-6">
+                                <button type="submit" class="inline-flex w-full justify-center rounded-md bg-brand-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-500 sm:ml-3 sm:w-auto transition-colors">Save Connection</button>
+                                <button type="button" onclick="closeModal()" class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 sm:mt-0 sm:w-auto transition-colors">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="fixed inset-0 z-[80] hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="fixed inset-0 bg-slate-900 bg-opacity-50 transition-opacity" onclick="closeDeleteModal()"></div>
+        <div class="fixed inset-0 z-10 overflow-y-auto">
+            <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                <div class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-md">
+                    <div class="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                        <div class="sm:flex sm:items-start">
+                            <div class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                                <i class="fa-solid fa-triangle-exclamation text-red-600"></i>
+                            </div>
+                            <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
+                                <h3 class="text-base font-semibold leading-6 text-gray-900">Delete Connection</h3>
+                                <div class="mt-2"><p class="text-sm text-gray-500">Are you sure you want to remove this person?</p></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                        <button type="button" id="confirmDeleteBtn" class="inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto">Delete</button>
+                        <button type="button" onclick="closeDeleteModal()" class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Profile Modal -->
+    <div id="viewModal" class="fixed inset-0 z-[60] hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="fixed inset-0 bg-slate-900 bg-opacity-50 transition-opacity backdrop-blur-sm" onclick="closeViewModal()"></div>
+        <div class="fixed inset-0 z-10 overflow-y-auto">
+            <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+                <div class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-xl fade-in">
+                    <!-- Top Color Bar -->
+                    <div class="h-32 bg-gradient-to-r from-brand-500 to-brand-700 relative">
+                        <button onclick="closeViewModal()" class="absolute top-4 right-4 text-white hover:text-slate-200 focus:outline-none rounded-full p-2 bg-black/20 hover:bg-black/30 transition-colors z-10">
+                            <i class="fa-solid fa-times text-lg"></i>
+                        </button>
+                    </div>
+                    <!-- Profile Image -->
+                    <div class="flex justify-center -mt-16 px-4 relative z-10">
+                        <img id="viewImage" src="" class="h-32 w-32 rounded-full object-cover border-4 border-white bg-white shadow-md">
+                    </div>
+                    <!-- Details -->
+                    <div class="px-6 pb-8 pt-4">
+                        <div class="text-center mb-6">
+                            <h3 class="text-2xl font-bold text-slate-900" id="viewName"></h3>
+                            <div class="text-sm font-medium text-slate-500 mt-1" id="viewAge"></div>
+                            <div id="viewTags" class="flex flex-wrap justify-center gap-2 mt-4"></div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-6 bg-slate-50 rounded-xl p-5 border border-slate-100">
+                            <div class="flex items-start space-x-3 text-sm text-slate-600 hidden" id="viewPhoneContainer">
+                                <div class="bg-white p-2 rounded-lg shadow-sm border border-slate-100"><i class="fa-solid fa-phone text-brand-500 w-4 text-center"></i></div>
+                                <div><span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Contact Number</span><span id="viewPhone" class="font-medium text-slate-800"></span></div>
+                            </div>
+                            <div class="flex items-start space-x-3 text-sm text-slate-600 hidden" id="viewLocationContainer">
+                                <div class="bg-white p-2 rounded-lg shadow-sm border border-slate-100"><i class="fa-solid fa-location-dot text-brand-500 w-4 text-center"></i></div>
+                                <div><span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Current Location</span><span id="viewLocation" class="font-medium text-slate-800"></span></div>
+                            </div>
+                            <div class="flex items-start space-x-3 text-sm text-slate-600 hidden" id="viewWorkContainer">
+                                <div class="bg-white p-2 rounded-lg shadow-sm border border-slate-100"><i class="fa-solid fa-briefcase text-brand-500 w-4 text-center"></i></div>
+                                <div><span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Work / Occupation</span><span id="viewWork" class="font-medium text-slate-800"></span></div>
+                            </div>
+                            <div class="flex items-start space-x-3 text-sm text-slate-600 hidden" id="viewEducationContainer">
+                                <div class="bg-white p-2 rounded-lg shadow-sm border border-slate-100"><i class="fa-solid fa-graduation-cap text-brand-500 w-4 text-center"></i></div>
+                                <div><span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Education</span><span id="viewEducation" class="font-medium text-slate-800"></span></div>
+                            </div>
+                        </div>
+
+                        <div id="viewFamilyContainer" class="hidden mb-6 pt-2">
+                            <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3"><i class="fa-solid fa-people-roof mr-1 text-slate-400"></i> Family & Relatives</h4>
+                            <div id="viewFamily" class="text-sm text-slate-700 bg-white border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100 shadow-sm"></div>
+                        </div>
+
+                        <div id="viewNotesContainer" class="hidden pt-2">
+                            <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3"><i class="fa-solid fa-note-sticky mr-1 text-slate-400"></i> Notes & Memories</h4>
+                            <div id="viewNotes" class="text-sm text-slate-700 bg-brand-50/50 p-4 rounded-xl border border-brand-100/50 whitespace-pre-wrap leading-relaxed"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyz1F1iNM4KUoaMfIr4vkTUOWAIZXiw_73eiIi7EbAN7WIgTG5DcqhNGw2MOI6t_X4l/exec';
+        
+        let connections = [];
+        let searchQuery = '';
+        let personToDeleteId = null;
+        let currentEditingTags = [];
+
+        // Helper string sanitization to prevent XSS and layout breaking
+        function escapeHTML(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function addRelativeRow(relation = 'Father', name = '') {
+            const container = document.getElementById('relativesContainer');
+            if (!container) return;
+            
+            const options = ['Father', 'Mother', 'Brother', 'Sister', 'Spouse', 'Son', 'Daughter', 'Dada', 'Dadi', 'Nana', 'Nani', 'Uncle', 'Aunty', 'Mama', 'Mami', 'Masa', 'Masi', 'Fuva', 'Fai', 'Other'];
+            let optionsHtml = options.map(opt => `<option value="${opt}" ${opt === relation ? 'selected' : ''}>${opt}</option>`).join('');
+            
+            const row = document.createElement('div');
+            row.className = 'flex items-center space-x-2 relative-row fade-in';
+            row.innerHTML = `
+                <select class="relative-relation mt-1 block w-1/3 rounded-md border border-slate-300 py-2 px-3 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 sm:text-sm bg-white">
+                    ${optionsHtml}
+                </select>
+                <input type="text" value="${escapeHTML(name)}" class="relative-name mt-1 block w-full rounded-md border border-slate-300 py-2 px-3 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 sm:text-sm" placeholder="Name">
+                <button type="button" onclick="this.closest('.relative-row').remove()" class="mt-1 p-2 text-slate-400 hover:text-red-500 transition-colors focus:outline-none" title="Remove">
+                    <i class="fa-solid fa-times"></i>
+                </button>
+            `;
+            container.appendChild(row);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            setupEventListeners();
+            loadDataFromGoogleSheets();
+        });
+
+        async function loadDataFromGoogleSheets() {
+            const cachedData = localStorage.getItem('connectionsCache');
+            const loadingState = document.getElementById('loadingState');
+            
+            if (cachedData) {
+                try {
+                    connections = JSON.parse(cachedData);
+                    if (loadingState) loadingState.classList.add('hidden');
+                    updateUI(); 
+                } catch(e) { console.error('Cache read error', e); }
+            }
+
+            try {
+                const response = await fetch(SCRIPT_URL);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const data = await response.json();
+                
+                connections = Array.isArray(data) ? data : [];
+                localStorage.setItem('connectionsCache', JSON.stringify(connections));
+                
+                const errorState = document.getElementById('errorState');
+                if(errorState) errorState.classList.add('hidden');
+                
+                updateUI(); 
+            } catch (e) {
+                console.error("Error loading data from Sheets:", e);
+                if (connections.length === 0) {
+                    const errorState = document.getElementById('errorState');
+                    const emptyState = document.getElementById('emptyState');
+                    if (errorState && emptyState) {
+                        errorState.classList.remove('hidden');
+                        emptyState.classList.add('hidden'); 
+                    }
+                }
+            } finally {
+                if (loadingState) loadingState.classList.add('hidden');
+            }
+        }
+
+        function setupEventListeners() {
+            const searchInputs = [document.getElementById('searchInput'), document.getElementById('searchInputMobile')];
+            searchInputs.forEach(input => {
+                if(input) {
+                    input.addEventListener('input', (e) => {
+                        searchQuery = e.target.value.toLowerCase();
+                        searchInputs.forEach(otherInput => { if(otherInput !== input && otherInput) otherInput.value = e.target.value; });
+                        updateUI();
+                    });
+                }
+            });
+
+            const tagInput = document.getElementById('tagInput');
+            if (tagInput) {
+                tagInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const val = tagInput.value.trim().replace(/^#/, '');
+                        if (val && !currentEditingTags.includes(val)) {
+                            currentEditingTags.push(val);
+                            renderActiveTags();
+                        }
+                        tagInput.value = '';
+                    }
+                });
+            }
+        }
+
+        function updateUI() {
+            renderGrid();
+        }
+
+        function getAvatarUrl(name) {
+            let safeName = (name || '').trim().replace(/['"]/g, '');
+            if (!safeName) safeName = '?';
+            let initials = safeName.split(/\s+/).map(n => n[0]).join('').substring(0, 2).toUpperCase();
+            if (!initials) initials = '?';
+            const colors = ['0ea5e9', 'f59e0b', '10b981', '8b5cf6', 'ec4899', 'f43f5e'];
+            return `https://ui-avatars.com/api/?name=${initials}&background=${colors[(safeName.length) % colors.length]}&color=fff&size=150`;
+        }
+
+        function calculateAge(birthdateStr) {
+            if (!birthdateStr) return null;
+            const b = new Date(birthdateStr);
+            if (isNaN(b.getTime())) return null; // Protect against invalid date inputs turning into NaN
+            const t = new Date();
+            let age = t.getFullYear() - b.getFullYear();
+            if (t.getMonth() < b.getMonth() || (t.getMonth() === b.getMonth() && t.getDate() < b.getDate())) age--;
+            return age;
+        }
+
+        function renderGrid() {
+            const grid = document.getElementById('connectionsGrid');
+            const emptyState = document.getElementById('emptyState');
+            if (!grid || !emptyState) return;
+
+            grid.innerHTML = '';
+
+            let filtered = connections.filter(p => {
+                if (!searchQuery.trim()) return true;
+                
+                let term = searchQuery.toLowerCase().trim();
+                let termWithoutHash = term.startsWith('#') ? term.substring(1) : term;
+                
+                let matchesName = (p.name || '').toLowerCase().includes(term);
+                let matchesNotes = (p.notes || '').toLowerCase().includes(term);
+                let matchesLocation = (p.location || '').toLowerCase().includes(term);
+                let matchesWork = (p.work || '').toLowerCase().includes(term);
+                let matchesPhone = (p.phone || '').toLowerCase().includes(term);
+                let matchesEdu = (p.education || '').toLowerCase().includes(term);
+                let matchesRel = (p.relatives || '').toLowerCase().includes(term);
+                let matchesTags = p.tags && Array.isArray(p.tags) && p.tags.some(tag => tag.toLowerCase().includes(termWithoutHash));
+                
+                return matchesName || matchesNotes || matchesLocation || matchesWork || matchesPhone || matchesEdu || matchesRel || matchesTags;
+            });
+
+            if (filtered.length === 0) {
+                grid.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            grid.classList.remove('hidden');
+            emptyState.classList.add('hidden');
+
+            filtered.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).forEach(person => {
+                const age = calculateAge(person.birthdate);
+                const ageStr = age !== null ? `${age} yrs` : '';
+                let tagsHTML = (person.tags && Array.isArray(person.tags)) ? person.tags.map(tag => `<span class="inline-flex px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600">#${escapeHTML(tag)}</span>`).join('') : '';
+
+                const safeImageUrl = getAvatarUrl(person.name).replace(/'/g, "\\'");
+
+                grid.innerHTML += `
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-all flex flex-col h-full relative group mt-3">
+                        <div class="h-16 bg-gradient-to-r from-slate-100 to-slate-200 w-full relative rounded-t-2xl">
+                            <!-- Mobile Fix: opacity-100 for touch screens, lg:opacity-0 for hover on desktops -->
+                            <div class="absolute top-2 right-2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity flex space-x-1 z-20">
+                                <button onclick="viewPerson('${person.id}')" class="bg-white p-1.5 rounded-full text-slate-500 hover:text-brand-500 shadow-sm transition-colors" title="View Full Profile"><i class="fa-solid fa-eye text-sm w-4 text-center"></i></button>
+                                <button onclick="editPerson('${person.id}')" class="bg-white p-1.5 rounded-full text-slate-500 hover:text-brand-600 shadow-sm transition-colors" title="Edit"><i class="fa-solid fa-pen text-sm w-4 text-center"></i></button>
+                                <button onclick="confirmDelete('${person.id}')" class="bg-white p-1.5 rounded-full text-slate-500 hover:text-red-600 shadow-sm transition-colors" title="Delete"><i class="fa-solid fa-trash text-sm w-4 text-center"></i></button>
+                            </div>
+                        </div>
+                        <div class="flex justify-center -mt-10 px-4 relative z-10 pointer-events-none">
+                            <!-- Safe image loop error handling -->
+                            <img src="${escapeHTML(person.image || getAvatarUrl(person.name))}" class="h-20 w-20 rounded-full object-cover border-4 border-white bg-white pointer-events-auto shadow-sm" onerror="this.onerror=null; this.src='${safeImageUrl}';">
+                        </div>
+                        <div class="p-5 flex-grow flex flex-col pt-3">
+                            <div class="text-center mb-3">
+                                <h3 class="text-lg font-bold text-slate-900">${escapeHTML(person.name) || 'Unknown'}</h3>
+                                ${ageStr ? `<div class="text-xs text-slate-500 font-medium">${ageStr}</div>` : ''}
+                            </div>
+                            <div class="flex flex-wrap justify-center gap-1.5 mb-4">${tagsHTML}</div>
+                            
+                            <div class="space-y-1 mb-2 flex-grow text-sm text-slate-600 flex flex-col items-center">
+                                ${person.work ? `<div class="flex items-center text-xs"><i class="fa-solid fa-briefcase w-5 text-center text-slate-400"></i> <span class="truncate max-w-[200px]">${escapeHTML(person.work)}</span></div>` : ''}
+                                ${person.location ? `<div class="flex items-center text-xs"><i class="fa-solid fa-location-dot w-5 text-center text-slate-400"></i> <span class="truncate max-w-[200px]">${escapeHTML(person.location)}</span></div>` : ''}
+                            </div>
+                        </div>
+                    </div>`;
+            });
+        }
+
+        function renderActiveTags() {
+            const container = document.getElementById('activeTagsContainer');
+            if (container) {
+                container.innerHTML = currentEditingTags.map((tag, i) => `
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-brand-100 text-brand-700">
+                        #${escapeHTML(tag)} <button type="button" onclick="removeTag(${i})" class="ml-1.5 text-brand-400 hover:text-brand-900"><i class="fa-solid fa-times"></i></button>
+                    </span>
+                `).join('');
+            }
+        }
+        
+        function removeTag(index) { currentEditingTags.splice(index, 1); renderActiveTags(); }
+
+        function openModal(id = null) {
+            document.getElementById('personForm').reset();
+            document.getElementById('personId').value = '';
+            currentEditingTags = [];
+            renderActiveTags();
+            
+            const relativesContainer = document.getElementById('relativesContainer');
+            if (relativesContainer) relativesContainer.innerHTML = '';
+            
+            if (id) {
+                document.getElementById('modal-title').textContent = 'Edit Connection';
+                const person = connections.find(p => p.id === id);
+                if (person) {
+                    document.getElementById('personId').value = person.id;
+                    document.getElementById('name').value = person.name || '';
+                    document.getElementById('phone').value = person.phone || '';
+                    document.getElementById('education').value = person.education || '';
+                    
+                    if (person.relatives) {
+                        const relArray = person.relatives.split(', ');
+                        relArray.forEach(rel => {
+                            const splitIdx = rel.indexOf(': ');
+                            if (splitIdx > -1) {
+                                addRelativeRow(rel.substring(0, splitIdx), rel.substring(splitIdx + 2));
+                            } else {
+                                addRelativeRow('Other', rel);
+                            }
+                        });
+                    } else {
+                         addRelativeRow();
+                    }
+                    
+                    document.getElementById('image').value = person.image || '';
+                    document.getElementById('birthdate').value = person.birthdate || '';
+                    document.getElementById('location').value = person.location || '';
+                    document.getElementById('work').value = person.work || '';
+                    document.getElementById('notes').value = person.notes || '';
+                    if(person.tags && Array.isArray(person.tags)) { currentEditingTags = [...person.tags]; renderActiveTags(); }
+                }
+            } else {
+                document.getElementById('modal-title').textContent = 'Add New Connection';
+                addRelativeRow(); 
+            }
+            document.getElementById('personModal').classList.remove('hidden');
+        }
+
+        function closeModal() { document.getElementById('personModal').classList.add('hidden'); }
+
+        function savePerson(event) {
+            if (event) event.preventDefault(); // Prevents page reload natively
+            
+            const form = document.getElementById('personForm');
+            if (!form.checkValidity()) { form.reportValidity(); return; }
+
+            const id = document.getElementById('personId').value;
+            const newId = id || 'id_' + Date.now().toString(36);
+
+            const relativeRows = document.querySelectorAll('.relative-row');
+            const relativesArray = [];
+            relativeRows.forEach(row => {
+                const relation = row.querySelector('.relative-relation').value;
+                const name = row.querySelector('.relative-name').value.trim();
+                if (name) {
+                    relativesArray.push(`${relation}: ${name}`);
+                }
+            });
+            const relativesString = relativesArray.join(', ');
+
+            const newPerson = {
+                id: newId,
+                name: document.getElementById('name').value.trim(),
+                phone: document.getElementById('phone').value.trim(),
+                education: document.getElementById('education').value.trim(),
+                relatives: relativesString,
+                tags: [...currentEditingTags],
+                image: document.getElementById('image').value.trim(),
+                birthdate: document.getElementById('birthdate').value,
+                location: document.getElementById('location').value.trim(),
+                work: document.getElementById('work').value.trim(),
+                notes: document.getElementById('notes').value.trim(),
+                createdAt: id ? (connections.find(p => p.id === id)?.createdAt || Date.now()) : Date.now(),
+                updatedAt: Date.now()
+            };
+
+            if (id) {
+                const index = connections.findIndex(p => p.id === id);
+                if (index !== -1) connections[index] = newPerson;
+            } else {
+                connections.push(newPerson);
+            }
+            
+            localStorage.setItem('connectionsCache', JSON.stringify(connections));
+            
+            updateUI();
+            closeModal();
+
+            const formData = new URLSearchParams();
+            formData.append('action', 'save');
+            for (const key in newPerson) {
+                if (key === 'tags') {
+                    formData.append(key, JSON.stringify(newPerson[key]));
+                } else {
+                    formData.append(key, newPerson[key]);
+                }
+            }
+
+            fetch(SCRIPT_URL, { method: 'POST', body: formData, mode: 'no-cors' })
+                .catch(e => console.error('Network error saving to sheets:', e));
+        }
+
+        function viewPerson(id) {
+            const person = connections.find(p => p.id === id);
+            if (!person) return;
+
+            const safeImageUrl = getAvatarUrl(person.name).replace(/'/g, "\\'");
+            const imgEl = document.getElementById('viewImage');
+            imgEl.src = person.image || getAvatarUrl(person.name);
+            imgEl.onerror = function() { this.onerror=null; this.src = safeImageUrl; };
+            
+            document.getElementById('viewName').textContent = person.name || 'Unknown';
+            
+            const age = calculateAge(person.birthdate);
+            document.getElementById('viewAge').textContent = age !== null ? `${age} years old` : '';
+
+            const tagsContainer = document.getElementById('viewTags');
+            tagsContainer.innerHTML = (person.tags && Array.isArray(person.tags) && person.tags.length > 0) 
+                ? person.tags.map(tag => `<span class="inline-flex px-3 py-1 rounded-full text-xs font-semibold bg-brand-100 text-brand-700 shadow-sm">#${escapeHTML(tag)}</span>`).join('') 
+                : '';
+
+            const setField = (val, containerId, textId) => {
+                const container = document.getElementById(containerId);
+                // Wrap val in String() to prevent errors if it's a number (like a phone number)
+                if (val && String(val).trim() !== '') {
+                    container.classList.remove('hidden');
+                    document.getElementById(textId).textContent = String(val);
+                } else {
+                    container.classList.add('hidden');
+                }
+            };
+
+            setField(person.phone, 'viewPhoneContainer', 'viewPhone');
+            setField(person.location, 'viewLocationContainer', 'viewLocation');
+            setField(person.work, 'viewWorkContainer', 'viewWork');
+            setField(person.education, 'viewEducationContainer', 'viewEducation');
+
+            const familyContainer = document.getElementById('viewFamilyContainer');
+            if (person.relatives && String(person.relatives).trim() !== '') {
+                familyContainer.classList.remove('hidden');
+                const relHtml = String(person.relatives).split(', ').map(rel => {
+                    const splitIdx = rel.indexOf(': ');
+                    if (splitIdx > -1) {
+                        return `<div class="flex items-center justify-between p-3"><span class="font-semibold text-slate-500 text-xs uppercase tracking-wide w-1/3">${escapeHTML(rel.substring(0, splitIdx))}</span> <span class="text-slate-800 font-medium text-right w-2/3">${escapeHTML(rel.substring(splitIdx + 2))}</span></div>`;
+                    }
+                    return `<div class="p-3 text-slate-800 font-medium">${escapeHTML(rel)}</div>`;
+                }).join('');
+                document.getElementById('viewFamily').innerHTML = relHtml;
+            } else {
+                familyContainer.classList.add('hidden');
+            }
+
+            const notesContainer = document.getElementById('viewNotesContainer');
+            if (person.notes && String(person.notes).trim() !== '') {
+                notesContainer.classList.remove('hidden');
+                document.getElementById('viewNotes').textContent = String(person.notes); 
+            } else {
+                notesContainer.classList.add('hidden');
+            }
+
+            document.getElementById('viewModal').classList.remove('hidden');
+        }
+
+        function closeViewModal() {
+            document.getElementById('viewModal').classList.add('hidden');
+        }
+
+        function editPerson(id) { openModal(id); }
+        function confirmDelete(id) {
+            personToDeleteId = id;
+            document.getElementById('deleteModal').classList.remove('hidden');
+        }
+        function closeDeleteModal() { document.getElementById('deleteModal').classList.add('hidden'); }
+
+        document.getElementById('confirmDeleteBtn').addEventListener('click', () => {
+            if (personToDeleteId) {
+                const idToDelete = personToDeleteId;
+                
+                connections = connections.filter(p => p.id !== idToDelete);
+                localStorage.setItem('connectionsCache', JSON.stringify(connections));
+                
+                updateUI();
+                closeDeleteModal();
+
+                const formData = new URLSearchParams();
+                formData.append('action', 'delete');
+                formData.append('id', idToDelete);
+
+                fetch(SCRIPT_URL, { method: 'POST', body: formData, mode: 'no-cors' })
+                    .catch(e => console.error('Network error deleting from sheets:', e));
+            }
+        });
+    </script>
+</body>
+</html>
